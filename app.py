@@ -200,6 +200,9 @@ def get_vectorstore():
     return ret
 
 def get_conversation_cahin(path):
+    if not path:
+        st.error("No selected paths found.")
+        return None 
     st.session_state.llm = ChatGoogleGenerativeAI(
     model="gemini-1.0-pro-latest",
     temperature=0,
