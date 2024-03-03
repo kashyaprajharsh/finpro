@@ -160,8 +160,8 @@ def folder_selector():
 
         if selected_years_months:
             # Get unique months for the selected year
-            unique_companies = list(set([entry["source"].split("\\")[-2] for entry in metadata]))
-            unique_companies.sort()
+            unique_months = list(set([calendar.month_name[int(month)] for _, month in selected_years_months]))
+            unique_months.sort(reverse=True)
 
            
             selected_month = st.selectbox("Select Month:", unique_months, key="month_selector")
