@@ -317,7 +317,7 @@ def main():
     initialize_session_state()
     load_dotenv()
     st.title("Finpro - EarningsWhisperer 💹")
-        hide_github_icon = """
+    hide_github_icon = """
     #GithubIcon {
       visibility: hidden;
     }
