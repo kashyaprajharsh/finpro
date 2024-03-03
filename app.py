@@ -131,7 +131,7 @@ def extract_year_from_path(path):
 def folder_selector():
     st.title("Select the Company and the earning calls")
     # Load metadata from the JSON file
-    with open("D:\\finpro_gemni\\metadata.json", "r") as file:
+    with open("metadata.json", "r") as file:
         metadata = json.load(file)
 
     # Get unique companies
