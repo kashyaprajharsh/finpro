@@ -1,0 +1,9 @@
+streamlit
+streamlit-chat
+langchain
+pypdf
+google-generativeai
+langchain-google-genai
+langchain-pinecone
+python-dotenv
+langkit[all]
