@@ -317,12 +317,14 @@ def main():
     initialize_session_state()
     load_dotenv()
     st.title("Finpro - EarningsWhisperer 💹")
-    hide_github_icon = """
-    #GithubIcon {
-      visibility: hidden;
+    hide_fork_css = """
+    .css-1l2t49i {
+        display: none !important;
     }
     """
-    st.markdown(hide_github_icon, unsafe_allow_html=True)
+
+# Use st.markdown to apply the custom CSS
+st.markdown(hide_fork_css, unsafe_allow_html=True)
    
 
 
