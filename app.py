@@ -135,7 +135,7 @@ def folder_selector():
         metadata = json.load(file)
 
     # Get unique companies
-    unique_companies = list(set([os.path.basename(os.path.dirname(entry["source"])) for entry in metadata]))
+    unique_companies = list(set([entry["source"].split("\\")[-2] for entry in metadata]))
     unique_companies.sort()
 
     # Create a dropdown for selecting the company
