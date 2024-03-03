@@ -324,7 +324,7 @@ def main():
     """
 
 # Use st.markdown to apply the custom CSS
-st.markdown(hide_fork_css, unsafe_allow_html=True)
+    st.markdown(hide_fork_css, unsafe_allow_html=True)
    
 
 
