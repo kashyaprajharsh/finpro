@@ -317,15 +317,6 @@ def main():
     initialize_session_state()
     load_dotenv()
     st.title("Finpro - EarningsWhisperer 💹")
-    hide_fork_css = """
-    .css-1l2t49i {
-        display: none !important;
-    }
-    """
-
-# Use st.markdown to apply the custom CSS
-    st.markdown(hide_fork_css, unsafe_allow_html=True)
-   
 
 
     if "conversation" not in st.session_state:
