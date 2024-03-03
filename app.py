@@ -142,7 +142,8 @@ def folder_selector():
     selected_company = st.selectbox("Select a Company:", unique_companies,key="company_selector")
 
     # Filter metadata based on the selected company
-    company_metadata = [entry for entry in metadata if entry["source"].startswith(os.path.join("E:\\earning_reports_copilot\\Concalls", selected_company))]
+    company_metadata = [entry for entry in metadata if entry["source"].startswith("E:\\earning_reports_copilot\\Concalls\\" + selected_company)]
+
 
     years_months = extract_year_month_from_metadata(company_metadata)
     if years_months:
