@@ -30,8 +30,8 @@ load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
-os.environ["PINECONE_API_KEY"] = st.secrets["PINECONE_API_KEY"]
+os.environ["GOOGLE_API_KEY"] = st.secrets['GOOGLE_API_KEY']
+os.environ["PINECONE_API_KEY"] = st.secrets['PINECONE_API_KEY']
 
 def initialize_session_state():
     if 'history' not in st.session_state:
