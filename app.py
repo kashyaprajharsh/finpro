@@ -28,7 +28,11 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 os.environ["GOOGLE_API_KEY"] = st.secrets['GOOGLE_API_KEY']
 os.environ["PINECONE_API_KEY"] = st.secrets['PINECONE_API_KEY']
-
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
+os.environ['LANGCHAIN_API_KEY']= st.secrets['LANGCHAIN_API_KEY']
+os.environ['LANGCHAIN_PROJECT'] = 'Finpro_gemni'
+client = Client(api_key=os.environ['LANGCHAIN_API_KEY'])
 
 def initialize_session_state():
     if 'history' not in st.session_state:
@@ -54,7 +58,7 @@ def display_last_dict(history):
         return None 
 def display_metric(prompt_and_response):
     if prompt_and_response:
-        schema = llm_metrics.init()
+        # schema = llm_metrics.init()
         schema = udf_schema()
         response_hallucination.init(llm=st.session_state.llm, num_samples=1)
         profile = why.log(prompt_and_response, schema=schema).profile()
@@ -204,7 +208,7 @@ def get_conversation_cahin(path):
     st.session_state.llm = ChatGoogleGenerativeAI(
     model="gemini-1.0-pro-latest",
     temperature=0,
-    top_p= 0.8,
+    top_p= 0.6,
     top_k= 8,
     max_output_tokens=2048,
     safety_settings = {
@@ -275,39 +279,39 @@ def get_response(user_input):
 
 
 
-def sampleQueries():
-    # sample queries
-    sample_queries = ["Give me bulleted list of 10 questions to understand financials of this company.",
-                      "Give me a bulleted list of questions I should ask to understand this company better."]
-    return sample_queries
+# def sampleQueries():
+#     # sample queries
+#     sample_queries = ["Give me bulleted list of 10 questions to understand financials of this company.",
+#                       "Give me a bulleted list of questions I should ask to understand this company better."]
+#     return sample_queries
 
-def get_user_query():
-    '''
-    Get user query: user can choose from sample queries or can write their own.
-    After query submit button is pressed, identify the query.
-    '''
-    user_query =""
-    # Create the selectbox for sample queries
-    sample_queries = sampleQueries()
+# def get_user_query():
+#     '''
+#     Get user query: user can choose from sample queries or can write their own.
+#     After query submit button is pressed, identify the query.
+#     '''
+#     user_query =""
+#     # Create the selectbox for sample queries
+#     sample_queries = sampleQueries()
     
-    #with col1:
-    selected_query = st.selectbox("Choose a sample query", sample_queries, 
-                                  index=None,
-                                  placeholder="Please Input your Query")
-    # Create the text input for user-written query
-    given_query = st.text_input("Or write your own query")
-    submit=st.form_submit_button('Submit')
+#     #with col1:
+#     selected_query = st.selectbox("Choose a sample query", sample_queries, 
+#                                   index=None,
+#                                   placeholder="Please Input your Query")
+#     # Create the text input for user-written query
+#     given_query = st.text_input("Or write your own query")
+#     submit=st.form_submit_button('Submit')
 
-    # Create the submit button
-    if submit:
-        # Check if the user has written their own query
-        if given_query:
-            user_query = given_query
-        elif selected_query:
-            user_query = selected_query
+#     # Create the submit button
+#     if submit:
+#         # Check if the user has written their own query
+#         if given_query:
+#             user_query = given_query
+#         elif selected_query:
+#             user_query = selected_query
         
-        st.write("Looking into the report .... ")
-    return(user_query)
+#         st.write("Looking into the report .... ")
+#     return(user_query)
 
 
 
@@ -327,7 +331,6 @@ def main():
         ]
 
     with st.sidebar:
-        st.header("")
         st.session_state.path = folder_selector()
     st.session_state.conversation= get_conversation_cahin(st.session_state.path)
 
@@ -335,7 +338,7 @@ def main():
     chain = get_conversation_cahin(st.session_state.path)
     display_chat_history(chain)
     prompt_and_response=display_last_dict(st.session_state.history)
-    st.write(display_metric(prompt_and_response))
+    st.table(display_metric(prompt_and_response))
 
     
 
