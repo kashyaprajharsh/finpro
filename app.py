@@ -57,9 +57,9 @@ def display_last_dict(history):
         return None 
 def display_metric(prompt_and_response):
     if prompt_and_response:
-        # schema = llm_metrics.init()
+        schema = llm_metrics.init()
         schema = udf_schema()
-        response_hallucination.init(llm=OpenAILegacy(model="gpt-3.5-turbo-instruct"), num_samples=1)
+        response_hallucination.init(llm=st.session_state.llm, num_samples=1)
         profile = why.log(prompt_and_response, schema=schema).profile()
         profview = profile.view()
         df = profview.to_pandas()
