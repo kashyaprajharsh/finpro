@@ -16,6 +16,9 @@ from langchain.chains import ConversationalRetrievalChain,HypotheticalDocumentEm
 from langchain_pinecone import PineconeVectorStore
 from langchain_core.messages import AIMessage, HumanMessage
 
+from langsmith import Client
+
+
 from dotenv import load_dotenv
 from langkit import llm_metrics
 from langkit import response_hallucination # alternatively use 'light_metrics'
