@@ -29,7 +29,7 @@ from whylogs.experimental.core.udf_schema import udf_schema
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-LANGCHAIN_API_KEY = os.getenv("LANGCHAIN_API_KEY)
+LANGCHAIN_API_KEY = os.getenv("LANGCHAIN_API_KEY")
 os.environ["GOOGLE_API_KEY"] = st.secrets['GOOGLE_API_KEY']
 os.environ["PINECONE_API_KEY"] = st.secrets['PINECONE_API_KEY']
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
