@@ -205,7 +205,7 @@ def get_conversation_cahin(path):
         st.error("No selected paths found.")
         return None 
     st.session_state.llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-pro-latest",
+    model="gemini-1.5-flash-latest",
     temperature=0,
     top_p= 0.6,
     top_k= 8,
