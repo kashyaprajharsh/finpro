@@ -3,7 +3,7 @@ import os
 import json
 import calendar
 import streamlit as st
-from streamlit_chat import message
+from streamlit_feedback import streamlit_feedback
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_google_genai import (
     ChatGoogleGenerativeAI,
@@ -11,27 +11,45 @@ from langchain_google_genai import (
     HarmCategory,
 )
 from langchain.prompts import PromptTemplate
-from langchain.memory import ConversationBufferMemory
+from langchain.callbacks.tracers.langchain import wait_for_all_tracers
+from langchain.callbacks.tracers.run_collector import RunCollectorCallbackHandler
+from langchain.memory import ConversationBufferMemory, StreamlitChatMessageHistory
+from langchain.callbacks import LangChainTracer
+from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
+from langsmith import Client
+from langchain.schema.runnable import RunnableConfig
 from langchain.chains import ConversationalRetrievalChain,HypotheticalDocumentEmbedder
 from langchain_pinecone import PineconeVectorStore
 from langchain_core.messages import AIMessage, HumanMessage
-
+from langsmith import Client
 from dotenv import load_dotenv
 from langkit import llm_metrics
 from langkit import response_hallucination # alternatively use 'light_metrics'
 import whylogs as why
 from whylogs.experimental.core.udf_schema import udf_schema
 
-
-
-
-import streamlit as st
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+LANGCHAIN_API_KEY = os.getenv("LANGCHAIN_API_KEY")
 os.environ["GOOGLE_API_KEY"] = st.secrets['GOOGLE_API_KEY']
 os.environ["PINECONE_API_KEY"] = st.secrets['PINECONE_API_KEY']
 
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
+os.environ["LANGCHAIN_PROJECT"]="Finpro_gemni"
+
+
+LANGCHAIN_ENDPOINT="https://api.smith.langchain.com"
+LANGCHAIN_API_KEY="ls__f7a4bd725d8d4e709bd5a82a346623b6"
+LANGCHAIN_PROJECT="Finpro_gemni"
+
+print(os.environ["LANGCHAIN_API_KEY"])
+client = Client(api_url=LANGCHAIN_ENDPOINT, api_key=os.environ['LANGCHAIN_API_KEY'])
+
+ls_tracer = LangChainTracer(project_name="Finpro_gemni", client=client)
+
+embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", task_type="retrieval_document")
 
 def initialize_session_state():
     if 'history' not in st.session_state:
@@ -43,10 +61,9 @@ def initialize_session_state():
     if 'past' not in st.session_state:
         st.session_state['past'] = ["Hey! 🐼"]
 
-def conversation_chat(query, chain, history):
-    result = chain.invoke({"question": query, "chat_history": history})
-    history.append((query, result["answer"]))
-    return result["answer"]
+
+
+
 
 def display_last_dict(history):
     chat_dict_list = [{'prompt': prompt, 'response': response} for prompt, response in history]
@@ -55,6 +72,8 @@ def display_last_dict(history):
         return chat_dict_list[-1]
     else:
         return None 
+    
+
 def display_metric(prompt_and_response):
     if prompt_and_response:
         schema = llm_metrics.init()
@@ -71,31 +90,40 @@ def display_metric(prompt_and_response):
 
 
 
-def display_chat_history(chain):
-    reply_container = st.container()
-    container = st.container()
-
-    with container:
-        with st.form(key='my_form', clear_on_submit=True):
-            user_input = st.text_input("Question:", placeholder="Please ask question.", key='input')
-            submit_button = st.form_submit_button(label='Send')
-
-        if submit_button and user_input:
+def display_chat_history(chain, msgs):
+    chat_container = st.container()
+    prompt = st.chat_input("Say something")
+    
+    if prompt:
+        st.write(f"User has sent the following prompt: {prompt}")
+        result = chain.invoke({"question": prompt, "chat_history": msgs})
+       
+        msgs.messages.append(HumanMessage(content=prompt))
+        msgs.messages.append(AIMessage(content=result["answer"]))
+        with chat_container:
+            st.chat_message("user").write(prompt)
             with st.spinner('Generating response...'):
-                output = conversation_chat(user_input, chain, st.session_state['history'])
-
-            st.session_state['past'].append(user_input)
-            st.session_state['generated'].append(output)
-
-    if st.session_state['generated']:
-        with reply_container:
-            for i in range(len(st.session_state['generated'])):
-                message(st.session_state["past"][i], is_user=True, key=str(i) + '_user',avatar_style='identicon')
-                message(st.session_state["generated"][i], key=str(i), avatar_style='bottts')
+                st.chat_message("ai").write(result["answer"])
+                st.session_state.last_run = result["__run"].run_id
+            st.session_state['past'].append(prompt)
+            st.session_state['generated'].append(result["answer"])
 
 
 
-embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", task_type="retrieval_document")
+
+
+def get_run_url(client, run_id):
+    return client.read_run(run_id).url
+
+def record_feedback(client, last_run, feedback):
+    scores = {"😀": 1, "🙂": 0.75, "😐": 0.5, "🙁": 0.25, "😞": 0}
+    client.create_feedback(
+        last_run,
+        feedback["type"],
+        score=scores[feedback["score"]],
+        comment=feedback.get("text", None),
+    )
+    st.toast("Feedback recorded!", icon="📝")
 
 def extract_year_month_from_metadata(metadata):
     years_months = []
@@ -162,7 +190,7 @@ def folder_selector():
             unique_months = list(set([calendar.month_name[int(month)] for _, month in selected_years_months]))
             unique_months.sort(reverse=True)
 
-           
+
             selected_month = st.selectbox("Select Month:", unique_months, key="month_selector")
             selected_paths = []
             for entry in company_metadata:
@@ -174,7 +202,7 @@ def folder_selector():
                 ):
                     # Extract filename without the date part using regular expression (improved approach)
                     filename_without_date = re.findall(r".*_([^\.]+)\.", entry["source"])[0]
-                    
+
                     # Extract the year from the path
                     path_year = extract_year_from_path(entry["source"])
                     # print(f"Path: {entry['source']}, Extracted Year: {path_year}")
@@ -199,7 +227,7 @@ def get_vectorstore():
     ret =PineconeVectorStore(embedding=embeddings,index_name="gemnivector")
     return ret
 
-def get_conversation_cahin(path):
+def get_conversation_chain(path):
     st.session_state.llm = ChatGoogleGenerativeAI(
     model="gemini-1.0-pro-latest",
     temperature=0,
@@ -239,29 +267,43 @@ Answer the question as detailed as possible from the provided context, make sure
 provided context just say, "answer is not available in the context", don't provide the wrong answer\n\n
 Context:\n {context}?\n
 Question: \n{question}\n
-
 Answer:
-
 """
 
 
     PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "question"] )
     chain_type_kwargs = {"prompt": PROMPT}
+    msgs = StreamlitChatMessageHistory()
 
     ret =get_vectorstore()
+
     memory = ConversationBufferMemory(
-        memory_key='chat_history', return_messages=True, output_key='answer')
-    
+    memory_key='chat_history', 
+    chat_memory=msgs,
+    return_messages=True, output_key='answer')
+
     conversation_chain = ConversationalRetrievalChain.from_llm(
         llm=st.session_state.llm,
         chain_type='stuff',
         retriever = ret.as_retriever(search_type='similarity',search_kwargs={"k": 10,'filter': {"source": path[0]}}),
         memory=memory,
         combine_docs_chain_kwargs =chain_type_kwargs,
+        callbacks=[ls_tracer], 
+        include_run_info=True,
         return_source_documents=True
     )
-    return conversation_chain
 
+    reset_history_key = "reset_history_button"
+    st.session_state.reset_history = st.sidebar.button("Reset chat history", key=reset_history_key)
+    if len(st.session_state.msgs.messages) == 0 or st.session_state.reset_history:
+        st.session_state.msgs.clear()
+        st.session_state.msgs.add_ai_message("How can I help you?")
+        st.session_state["last_run"] = None
+
+
+    
+    
+    return conversation_chain,msgs
 
 
 
@@ -288,7 +330,7 @@ def get_user_query():
     user_query =""
     # Create the selectbox for sample queries
     sample_queries = sampleQueries()
-    
+
     #with col1:
     selected_query = st.selectbox("Choose a sample query", sample_queries, 
                                   index=None,
@@ -304,47 +346,56 @@ def get_user_query():
             user_query = given_query
         elif selected_query:
             user_query = selected_query
-        
+
         st.write("Looking into the report .... ")
     return(user_query)
 
 
 
+
+
+
+
 def main():
-    st.set_page_config(page_title="Finpro.ai - FinGainInsights",
-                    page_icon=":moneybag:")
+    st.set_page_config(page_title="Finpro.ai - FinGainInsights", page_icon=":moneybag:")
     initialize_session_state()
-    load_dotenv()
     st.title("Finpro - EarningsWhisperer 💹")
-   
-
-
-    if "conversation" not in st.session_state:
-        st.session_state.conversation = None
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = [
-            AIMessage(content="Hello, I am a Finpro - NiftyChat Navigator. How can I help you?"),
-        ]
+    
 
     with st.sidebar:
         st.header("")
         st.session_state.path = folder_selector()
-    st.session_state.conversation= get_conversation_cahin(st.session_state.path)
-
-    # Create the chain object
-    chain = get_conversation_cahin(st.session_state.path)
-    display_chat_history(chain)
-    prompt_and_response=display_last_dict(st.session_state.history)
-    st.write(display_metric(prompt_and_response))
 
     
+    if "conversation_chain" not in st.session_state or "msgs" not in st.session_state:
+        st.session_state.conversation_chain, st.session_state.msgs = get_conversation_chain(st.session_state.path)
 
+    display_chat_history(st.session_state.conversation_chain, st.session_state.msgs)
+    if st.session_state.reset_history:
+        st.session_state.pop("conversation_chain", None)
+        st.session_state.pop("msgs", None)
 
+    if st.session_state.get("last_run"):
+        run_url = get_run_url(st.session_state.last_run)
+        st.sidebar.markdown(f"[Latest Trace: 🛠️]({run_url})")
+        feedback = streamlit_feedback(
+            feedback_type="faces",
+            optional_text_label="[Optional] Please provide an explanation",
+            key=f"feedback_{st.session_state.last_run}",
+        )
+        if feedback:
+            scores = {"😀": 1, "🙂": 0.75, "😐": 0.5, "🙁": 0.25, "😞": 0}
+            client.create_feedback(
+                st.session_state.last_run,
+                feedback["type"],
+                score=scores[feedback["score"]],
+                comment=feedback.get("text", None),
+            )
+            st.toast("Feedback recorded!", icon="📝")
 
+    # prompt_and_response=display_last_dict(st.session_state.history)
+    # st.table(display_metric(prompt_and_response))
 
 if __name__ == "__main__":
+
     main()
-
-
-
-    
