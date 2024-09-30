@@ -13,4 +13,4 @@ streamlit-feedback
 pydantic-settings
 python-dotenv
 langkit[all]
-
+loguru
