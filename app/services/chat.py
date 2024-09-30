@@ -1,8 +1,8 @@
 from datetime import datetime, UTC
 from fastapi import HTTPException, BackgroundTasks
-from models import UserInput, ClearHistoryInput
-from database import users_collection
-from api.dependencies import get_rag_chain, store
+from app.models import UserInput, ClearHistoryInput
+from app.database import users_collection
+from app.api.dependencies import get_rag_chain, store
 from loguru import logger
 import uuid
 

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from models import UserInput, User, UserCreate, UserLogin, ClearHistoryInput
-from services.auth import register_user, login_user,authenticate_user,verify_token
-from services.chat import chat, clear_history
-from database import users_collection
+from app.models import UserInput, User, UserCreate, UserLogin, ClearHistoryInput
+from app.services.auth import register_user, login_user, authenticate_user, verify_token
+from app.services.chat import chat, clear_history
+from app.database import users_collection
 
 router = APIRouter()
 

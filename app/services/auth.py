@@ -1,8 +1,8 @@
 import uuid
-from fastapi import HTTPException, Depends
-from models import UserCreate, UserLogin, User
-from database import users_collection
-from config import settings
+from fastapi import HTTPException, Depends, status
+from app.models import UserCreate, UserLogin, User
+from app.database import users_collection
+from app.config import settings
 from loguru import logger
 from functools import lru_cache
 from fastapi.security import OAuth2PasswordBearer

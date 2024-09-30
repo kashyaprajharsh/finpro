@@ -6,8 +6,8 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from config import settings
-from services.prompts import BASE_SYSTEM_PROMPT
+from app.config import settings
+from app.services.prompts import BASE_SYSTEM_PROMPT
 store = {}
 
 
