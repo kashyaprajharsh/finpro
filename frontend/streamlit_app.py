@@ -5,13 +5,14 @@ import uuid
 import json
 import calendar
 import re
+import pandas as pd
 import os
 from dotenv import load_dotenv
 from streamlit_feedback import streamlit_feedback
 
 load_dotenv()
 
-API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
+API_URL = os.getenv("API_URL", "http://localhost:8000/")
 CUSTOM_TOKEN = os.getenv("CUSTOM_TOKEN")
 
 def send_request(endpoint, method="POST", json=None, params=None):
@@ -20,8 +21,16 @@ def send_request(endpoint, method="POST", json=None, params=None):
     response = requests.request(method, url, json=json, params=params, headers=headers)
     return response.json() if response.status_code == 200 else None
 
-def send_message(username, message, session_id):
-    return send_request("chat/", json={"input": message, "username": username, "session_id": session_id})
+def send_message(username, message, session_id, paths):
+    response = send_request("chat/", json={
+        "input": message,
+        "username": username,
+        "session_id": session_id,
+        "paths": paths
+    })
+    if response:
+        return response["response"], response["message_id"], response.get("metrics", {})
+    return None, None, {}
 
 def clear_message_history(username, session_id):
     response = send_request("clear_history/", json={"username": username, "session_id": session_id})
@@ -117,12 +126,16 @@ def extract_year_from_path(path):
         return None
 
 def send_feedback(username, message_id, feedback_type, score, comment):
-    response = requests.post(
-        f"{API_URL}/feedback/",
-        json={"message_id": message_id, "feedback_type": feedback_type, "score": score, "comment": comment},
-        params={"username": username}
-    )
-    return response.json() if response.status_code == 200 else None
+    response = send_request("feedback/", json={"message_id": message_id, "feedback_type": feedback_type, "score": score, "comment": comment}, params={"username": username})
+    print(f"Feedback response: {response}")  # Add this line
+    if response is None:
+        return False, "Failed to submit feedback. Please try again."
+    elif isinstance(response, dict):
+        if "detail" in response:
+            return False, f"Error: {response['detail']}"
+        elif "message" in response:
+            return True, response["message"]
+    return False, "Unexpected response format from server."
 
 def main():
     st.set_page_config(page_title="Finpro - EarningsWhisperer", page_icon="💹", layout="wide")
@@ -184,50 +197,74 @@ def main():
         if 'messages' not in st.session_state:
             st.session_state.messages = []
 
-        for message in st.session_state.messages:
+        for i, message in enumerate(st.session_state.messages):
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
-                if message["role"] == "assistant":
-                    feedback = streamlit_feedback(
-                        feedback_type="faces",
-                        optional_text_label="[Optional] Please provide an explanation",
-                        key=f"feedback_{message['id']}",
-                    )
-                    if feedback:
-                        scores = {"😀": 1, "🙂": 0.75, "😐": 0.5, "🙁": 0.25, "😞": 0}
-                        feedback_result = send_feedback(
-                            st.session_state.user['username'],
-                            message['id'],
-                            feedback["type"],
-                            scores[feedback["score"]],
-                            feedback.get("text", None)
-                        )
-                        if feedback_result:
-                            st.toast("Feedback recorded!", icon="📝")
+            
+            if message["role"] == "assistant":
+                # Display metrics in an expander if available
+                if "metrics" in message:
+                    with st.expander("View Response Metrics"):
+                        if message["metrics"]:
+                            for metric, value in message["metrics"].items():
+                                st.metric(label=metric, value=f"{value:.4f}")
                         else:
-                            st.error("Failed to submit feedback.")
+                            st.write("No metrics available for this response.")
 
-        user_input = st.chat_input("What would you like to know about the earnings call?")
-        if user_input:
-            st.session_state.messages.append({"role": "user", "content": user_input})
+                feedback = streamlit_feedback(
+                    feedback_type="faces",
+                    optional_text_label="[Optional] Please provide an explanation",
+                    key=f"feedback_{message.get('id', '')}_{i}",
+                )
+                if feedback:
+                    scores = {"😀": 1, "🙂": 0.75, "😐": 0.5, "🙁": 0.25, "😞": 0}
+                    success, feedback_message = send_feedback(
+                        st.session_state.user['username'],
+                        message.get('id', ''),
+                        feedback["type"],
+                        scores[feedback["score"]],
+                        feedback.get("text", None)
+                    )
+                    if success:
+                        st.toast(feedback_message, icon="📝")
+                    else:
+                        st.error(feedback_message)
+
+        # Add the user's new message to the chat history
+        if prompt := st.chat_input("What is your question?"):
+            st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
-                st.markdown(user_input)
+                st.markdown(prompt)
 
-            with st.spinner("Thinking..."):
-                response = send_message(st.session_state.user['username'], user_input, st.session_state.user['session_id'])
+            # Get the AI response
+            with st.chat_message("assistant"):
+                response, message_id, metrics = send_message(
+                    st.session_state.user['username'],
+                    prompt,
+                    st.session_state.user['session_id'],
+                    st.session_state.path  # Pass the selected paths to the API
+                )
                 if response:
-                    assistant_response = response['response']
-                    message_id = response['message_id']
-                    st.session_state.messages.append({"role": "assistant", "content": assistant_response, "id": message_id})
-                    with st.chat_message("assistant"):
-                        st.markdown(assistant_response)
+                    st.markdown(response)
+                    st.session_state.messages.append({
+                        "role": "assistant", 
+                        "content": response, 
+                        "id": message_id,
+                        "metrics": metrics  # Store metrics in the message
+                    })
                     
-                    # Display metrics
-                    if 'metrics' in response and response['metrics']:
-                        st.subheader("Response Metrics")
-                        st.table(response['metrics'])
+                    # Display metrics for the new message
+                    with st.expander("View Response Metrics"):
+                        if metrics:
+                            for metric, value in metrics.items():
+                                st.metric(label=metric, value=f"{value:.4f}")
+                        else:
+                            st.write("No metrics available for this response.")
                 else:
-                    st.error("Failed to get response from the assistant.")
+                    st.error("Failed to get a response from the AI. Please try again.")
+
+                # Force a rerun to show the feedback component for the new message
+                st.rerun()
 
 if __name__ == "__main__":
     main()

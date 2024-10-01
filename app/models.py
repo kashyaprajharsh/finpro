@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 class UserCreate(BaseModel):
     username: str
@@ -20,7 +20,14 @@ class UserInput(BaseModel):
     input: str
     username: str
     session_id: str
+    paths: List[str]
 
 class ClearHistoryInput(BaseModel):
     username: str
     session_id: str
+
+class FeedbackInput(BaseModel):
+    message_id: str
+    feedback_type: str
+    score: float
+    comment: Optional[str] = None

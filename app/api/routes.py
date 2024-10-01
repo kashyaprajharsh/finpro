@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from app.models import UserInput, User, UserCreate, UserLogin, ClearHistoryInput
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query
+from app.models import UserInput, User, UserCreate, UserLogin, ClearHistoryInput, FeedbackInput
 from app.services.auth import register_user, login_user, authenticate_user, verify_token
-from app.services.chat import chat, clear_history
+from app.services.chat import chat, clear_history, submit_feedback
 from app.database import users_collection
+from app.api.dependencies import get_rag_chain, store
 
 router = APIRouter()
 
@@ -31,3 +32,10 @@ async def get_user_messages(username: str):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user.get("messages", [])
+
+@router.post("/feedback/")
+async def feedback_endpoint(feedback: FeedbackInput, username: str = Query(...)):
+    try:
+        return await submit_feedback(feedback, username)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
