@@ -7,7 +7,6 @@ from loguru import logger
 import uuid
 from langkit.openai import OpenAILegacy
 from langkit import llm_metrics
-# from langkit import response_hallucination
 import whylogs as why
 from whylogs.experimental.core.udf_schema import udf_schema
 
@@ -39,18 +38,29 @@ async def chat(user_input: UserInput, background_tasks: BackgroundTasks):
             {"input": user_input.input},
             {"configurable": {"session_id": user_input.session_id}}
         )
-        print(response)
         
         message_id = str(uuid.uuid4())
         metrics = await calculate_metrics(user_input.input, response["answer"])
-        print("metrics", metrics)
+        
+        # Serialize the sources (Document objects) to a format that can be stored in MongoDB
+        serialized_sources = []
+        for doc in response.get("context", []):
+            serialized_source = {
+                "page_content": doc.page_content,
+                "metadata": {
+                    k: (str(v) if not isinstance(v, (int, float, bool, type(None))) else v)
+                    for k, v in doc.metadata.items()
+                }
+            }
+            serialized_sources.append(serialized_source)
+        
         new_message = {
-            "id": message_id,  # Ensure this is set correctly
+            "id": message_id,
             "input": user_input.input,
             "output": response["answer"],
             "timestamp": datetime.now(UTC),
             "metrics": metrics,
-            "sources": response.get("context", [])  # Make sure this is a list of dictionaries
+            "sources": serialized_sources  # Use the serialized sources
         }
         
         background_tasks.add_task(update_user_messages, user_input.username, user_input.session_id, new_message)
@@ -58,9 +68,9 @@ async def chat(user_input: UserInput, background_tasks: BackgroundTasks):
         return {
             "session_id": user_input.session_id,
             "response": response["answer"],
-            "message_id": message_id,  # Ensure this is returned correctly
+            "message_id": message_id,
             "metrics": metrics,
-            "sources": response.get("context", [])  # Make sure this is a list of dictionaries
+            "sources": serialized_sources  # Return the serialized sources
         }
     except Exception as e:
         logger.error(f"Error in chat function: {str(e)}")

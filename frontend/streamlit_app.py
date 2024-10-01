@@ -29,8 +29,8 @@ def send_message(username, message, session_id, paths):
         "paths": paths
     })
     if response:
-        return response["response"], response["message_id"], response.get("metrics", {})
-    return None, None, {}
+        return response["response"], response["message_id"], response.get("metrics", {}), response.get("sources", [])
+    return None, None, {}, []
 
 def clear_message_history(username, session_id):
     response = send_request("clear_history/", json={"username": username, "session_id": session_id})
@@ -141,6 +141,19 @@ def main():
     st.set_page_config(page_title="Finpro - EarningsWhisperer", page_icon="💹", layout="wide")
     st.title("Finpro - EarningsWhisperer 💹")
 
+    # Add custom CSS for scrollable content
+    st.markdown("""
+    <style>
+    .scrollable-container {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     if 'user' not in st.session_state:
         st.session_state.user = {'username': '', 'session_id': ''}
 
@@ -210,6 +223,22 @@ def main():
                                 st.metric(label=metric, value=f"{value:.4f}")
                         else:
                             st.write("No metrics available for this response.")
+            
+                # Display sources in an expander with scrollable content
+                if "sources" in message:
+                    with st.expander("View Sources"):
+                        if message["sources"]:
+                            for idx, source in enumerate(message["sources"]):
+                                st.markdown(f"**Source {idx + 1}:**")
+                                st.markdown(f"**File:** {source['metadata'].get('source', 'N/A')}")
+                                st.markdown(f"**Page:** {source['metadata'].get('page', 'N/A')}")
+                                with st.container():
+                                    st.markdown('<div class="scrollable-container">', unsafe_allow_html=True)
+                                    st.markdown(f"**Content:**\n\n{source['page_content']}")
+                                    st.markdown('</div>', unsafe_allow_html=True)
+                                st.markdown("---")
+                        else:
+                            st.write("No sources available for this response.")
 
                 feedback = streamlit_feedback(
                     feedback_type="faces",
@@ -238,7 +267,7 @@ def main():
 
             # Get the AI response
             with st.chat_message("assistant"):
-                response, message_id, metrics = send_message(
+                response, message_id, metrics, sources = send_message(
                     st.session_state.user['username'],
                     prompt,
                     st.session_state.user['session_id'],
@@ -250,7 +279,8 @@ def main():
                         "role": "assistant", 
                         "content": response, 
                         "id": message_id,
-                        "metrics": metrics  # Store metrics in the message
+                        "metrics": metrics,  # Store metrics in the message
+                        "sources": sources  # Store sources in the message
                     })
                     
                     # Display metrics for the new message
@@ -260,6 +290,21 @@ def main():
                                 st.metric(label=metric, value=f"{value:.4f}")
                         else:
                             st.write("No metrics available for this response.")
+                    
+                    # Display sources for the new message with scrollable content
+                    with st.expander("View Sources"):
+                        if sources:
+                            for idx, source in enumerate(sources):
+                                st.markdown(f"**Source {idx + 1}:**")
+                                st.markdown(f"**File:** {source['metadata'].get('source', 'N/A')}")
+                                st.markdown(f"**Page:** {source['metadata'].get('page', 'N/A')}")
+                                with st.container():
+                                    st.markdown('<div class="scrollable-container">', unsafe_allow_html=True)
+                                    st.markdown(f"**Content:**\n\n{source['page_content']}")
+                                    st.markdown('</div>', unsafe_allow_html=True)
+                                st.markdown("---")
+                        else:
+                            st.write("No sources available for this response.")
                 else:
                     st.error("Failed to get a response from the AI. Please try again.")
 
