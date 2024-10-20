@@ -12,7 +12,7 @@ from streamlit_feedback import streamlit_feedback
 
 load_dotenv()
 
-API_URL = os.getenv("API_URL", "http://localhost:8000/")
+API_URL = os.getenv("API_URL", "https://finpro-yjx0.onrender.com")
 CUSTOM_TOKEN = os.getenv("CUSTOM_TOKEN")
 
 def send_request(endpoint, method="POST", json=None, params=None):
