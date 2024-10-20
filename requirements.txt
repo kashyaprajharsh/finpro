@@ -10,10 +10,5 @@ fastapi
 motor
 pydantic-settings
 python-dotenv
-langkit[all]
 loguru
 rank_bm25
-numpy==1.26.3
-scipy==1.11.4
-pandas==2.1.4
-scikit-learn==1.3.2

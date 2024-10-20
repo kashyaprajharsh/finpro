@@ -5,10 +5,10 @@ from app.database import users_collection
 from app.api.dependencies import get_rag_chain, store
 from loguru import logger
 import uuid
-from langkit.openai import OpenAILegacy
-from langkit import llm_metrics
-import whylogs as why
-from whylogs.experimental.core.udf_schema import udf_schema
+# from langkit.openai import OpenAILegacy
+# from langkit import llm_metrics
+# import whylogs as why
+# from whylogs.experimental.core.udf_schema import udf_schema
 
 async def update_user_messages(username: str, session_id: str, new_message: dict):
     await users_collection.update_one(
@@ -19,17 +19,17 @@ async def update_user_messages(username: str, session_id: str, new_message: dict
         }
     )
 
-async def calculate_metrics(input: str, output: str):
-    schema = llm_metrics.init()
-    schema = udf_schema()
-    #response_hallucination.init(llm=OpenAILegacy(), num_samples=1)
-    prompt_and_response = {"prompt": input, "response": output}
-    profile = why.log(prompt_and_response, schema=schema).profile()
-    profview = profile.view()
-    df = profview.to_pandas()
-    selected_rows = df[df.index.str.startswith(('response.toxicity', 'response.sentiment_nltk', 'response.relevance_to_prompt', 'response.hallucination', 'prompt.toxicity', 'prompt.jailbreak_similarity'))]
-    selected_columns = selected_rows[['distribution/max']].to_dict()['distribution/max']
-    return selected_columns
+# async def calculate_metrics(input: str, output: str):
+#     schema = llm_metrics.init()
+#     schema = udf_schema()
+#     #response_hallucination.init(llm=OpenAILegacy(), num_samples=1)
+#     prompt_and_response = {"prompt": input, "response": output}
+#     profile = why.log(prompt_and_response, schema=schema).profile()
+#     profview = profile.view()
+#     df = profview.to_pandas()
+#     selected_rows = df[df.index.str.startswith(('response.toxicity', 'response.sentiment_nltk', 'response.relevance_to_prompt', 'response.hallucination', 'prompt.toxicity', 'prompt.jailbreak_similarity'))]
+#     selected_columns = selected_rows[['distribution/max']].to_dict()['distribution/max']
+#     return selected_columns
 
 async def chat(user_input: UserInput, background_tasks: BackgroundTasks):
     try:
@@ -40,7 +40,7 @@ async def chat(user_input: UserInput, background_tasks: BackgroundTasks):
         )
         
         message_id = str(uuid.uuid4())
-        metrics = await calculate_metrics(user_input.input, response["answer"])
+        # metrics = await calculate_metrics(user_input.input, response["answer"])
         
         # Serialize the sources (Document objects) to a format that can be stored in MongoDB
         serialized_sources = []
@@ -59,7 +59,7 @@ async def chat(user_input: UserInput, background_tasks: BackgroundTasks):
             "input": user_input.input,
             "output": response["answer"],
             "timestamp": datetime.now(UTC),
-            "metrics": metrics,
+            # "metrics": metrics,
             "sources": serialized_sources  # Use the serialized sources
         }
         
@@ -69,7 +69,7 @@ async def chat(user_input: UserInput, background_tasks: BackgroundTasks):
             "session_id": user_input.session_id,
             "response": response["answer"],
             "message_id": message_id,
-            "metrics": metrics,
+            # "metrics": metrics,
             "sources": serialized_sources  # Return the serialized sources
         }
     except Exception as e:
