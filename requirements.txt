@@ -1,5 +1,4 @@
 uvicorn
-streamlit
 langchain
 langchain-community
 langsmith
@@ -9,7 +8,6 @@ google-generativeai
 langchain-pinecone
 fastapi
 motor
-streamlit-feedback
 pydantic-settings
 python-dotenv
 langkit[all]
