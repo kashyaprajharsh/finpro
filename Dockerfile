@@ -27,4 +27,4 @@ ENV PORT=80 \
     CUSTOM_TOKEN="f47ac10b-58cc-4372-a567-0e02b2c3d479"     
 
 # Run app.py when the container launches
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

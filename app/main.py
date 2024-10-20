@@ -2,12 +2,8 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import nltk
 import os
 
-nltk_data_path = os.path.expanduser("~/nltk_data")
-if not os.path.exists(os.path.join(nltk_data_path, "sentiment", "vader_lexicon.txt")):
-    nltk.download("vader_lexicon", quiet=True)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,5 +25,5 @@ app.include_router(api_router)
 if __name__ == "__main__":
     import uvicorn
     import os
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 8080))
     uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
