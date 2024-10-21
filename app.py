@@ -205,11 +205,7 @@ def get_conversation_cahin(path):
         st.error("No selected paths found.")
         return None 
     st.session_state.llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash-latest",
-    temperature=0,
-    top_p= 0.6,
-    top_k= 8,
-    max_output_tokens=2048,
+    model="gemini-1.5-flash-002",
     safety_settings = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
     HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
